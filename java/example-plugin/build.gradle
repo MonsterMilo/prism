@@ -1,0 +1,3 @@
+// A minimal plugin. Drop the built jar into the Prism plugins folder.
+base { archivesName = 'example-plugin' }
+dependencies { compileOnly project(':api') }

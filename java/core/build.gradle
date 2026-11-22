@@ -1,0 +1,7 @@
+// prism-core.jar: loaded into the game by the agent. Contains the API classes too.
+base { archivesName = 'prism-core' }
+dependencies { implementation project(':api') }
+jar {
+    dependsOn ':api:jar'
+    from { project(':api').sourceSets.main.output }
+}

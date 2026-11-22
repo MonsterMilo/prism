@@ -1,0 +1,3 @@
+// prism-api.jar: what plugins compile against.
+base { archivesName = 'prism-api' }
+java { withSourcesJar() }

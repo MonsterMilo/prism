@@ -1,0 +1,12 @@
+// Java 8 bytecode: runs on Lunar (Java 17) and on Forge 1.8.9 (Java 8).
+subprojects {
+    apply plugin: 'java'
+    group = 'prism'
+    version = '0.1.0'
+    repositories { mavenCentral() }
+    tasks.withType(JavaCompile).configureEach {
+        options.release = 8
+        options.encoding = 'UTF-8'
+        options.compilerArgs += ['-Xlint:-options']
+    }
+}
