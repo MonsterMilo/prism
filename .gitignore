@@ -1,0 +1,5 @@
+/target
+/dist
+java/.gradle
+java/**/build
+*.log
