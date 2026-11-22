@@ -1,0 +1,43 @@
+name: build
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.14.3' }
+      - uses: dtolnay/rust-toolchain@stable
+      - run: tests/run.sh
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.14.3' }
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        shell: pwsh
+        run: |
+          cd java; gradle -q build; cd ..
+          cargo build --release -p prism-agent
+          $env:PRISM_AGENT_DLL = "$PWD\target\release\prism_agent.dll"
+          $env:PRISM_CORE_JAR = "$PWD\java\core\build\libs\prism-core-0.1.0.jar"
+          cargo build --release -p prism-app
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item target\release\Prism.exe dist\
+          Copy-Item java\api\build\libs\prism-api-0.1.0.jar dist\prism-api.jar
+          Copy-Item java\example-plugin\build\libs\example-plugin-0.1.0.jar dist\example-plugin.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prism-windows
+          path: dist/

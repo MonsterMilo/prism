@@ -1,0 +1,23 @@
+[package]
+name = "prism-agent"
+description = "Loaded into the game process: finds the JVM and starts the Java core."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "prism_agent"
+crate-type = ["cdylib"]
+
+[dependencies]
+jni-sys = "0.3"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_LibraryLoader",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+    "Win32_System_Diagnostics_Debug",
+] }
