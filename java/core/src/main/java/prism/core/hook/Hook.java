@@ -22,6 +22,8 @@ public final class Hook {
     final int[] argLocals;       // local variable slots passed to the handler
     final boolean cancelable;
     final Predicate<Object[]> handler;
+    /** Only exists on some clients (e.g. Forge's classes): no warning when missing. */
+    boolean optional;
 
     private Hook(String id, String owner, String[] names, String desc, At at, String callOwner,
                  String[] callNames, String callDesc, int[] argLocals, boolean cancelable,
@@ -54,6 +56,11 @@ public final class Hook {
                            Predicate<Object[]> handler) {
         return new Hook(id, owner, new String[] {mcp, srg}, desc, At.BEFORE_CALL, callOwner,
                 new String[] {callMcp, callSrg}, callDesc, args, false, handler);
+    }
+
+    Hook optional() {
+        optional = true;
+        return this;
     }
 
     String key() { return "prism.hook." + id; }

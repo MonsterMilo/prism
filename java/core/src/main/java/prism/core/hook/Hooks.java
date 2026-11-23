@@ -49,7 +49,10 @@ public final class Hooks {
             try {
                 cls = Class.forName(e.getKey().replace('/', '.'), false, gameLoader);
             } catch (Throwable t) {
-                for (Hook h : list) log.warn("hook " + h.id + ": class " + e.getKey() + " not found");
+                for (Hook h : list) {
+                    if (h.optional) log.info("hook " + h.id + ": skipped (" + e.getKey() + " not on this client)");
+                    else log.warn("hook " + h.id + ": class " + e.getKey() + " not found");
+                }
                 continue;
             }
             Patcher.Result[] result = new Patcher.Result[1];

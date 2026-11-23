@@ -33,7 +33,7 @@ grep -q "mcp names" "$W/home/logs/prism.log" || fail "mappings not detected as m
 echo "ok  injected, core started on the game's class loader, plugin loaded, chat on client thread"
 
 # hooks
-grep -q "hooks placed: 4" "$W/home/logs/prism.log" || fail "not all 4 hooks placed"
+grep -q "hooks placed: 5" "$W/home/logs/prism.log" || fail "not all 5 hooks placed"
 wait_for "$W/home/logs/prism.log" "counts tick=[1-9][0-9]* overlay=[1-9][0-9]* world=[1-9]"
 grep -q "overlay size 427x240 pt 0.5" "$W/home/logs/prism.log" || fail "overlay event values wrong"
 wait_for "$W/out.txt" "DRAW text '§dPrism"
@@ -79,7 +79,7 @@ cp "$ROOT/java/example-plugin/build/libs/example-plugin.jar" "$W/home/plugins/ex
 jcmd $GAME JVMTI.agent_load "$ROOT/target/debug/libprism_agent.so" "$W/home|$W/home/bin/prism-core.jar" >/dev/null
 for _ in $(seq 1 100); do tail -n +$((LINES+1)) "$W/out.txt" | grep -q "Loaded Example" && break; sleep 0.1; done
 tail -n +$((LINES+1)) "$W/out.txt" | grep -q "Loaded Example" || fail "re-inject didn't load"
-for _ in $(seq 1 50); do grep -q "hooks placed: 4" "$W/home/logs/prism.log" && break; sleep 0.1; done
-grep -q "hooks placed: 4" "$W/home/logs/prism.log" || fail "hooks not placed after re-inject"
+for _ in $(seq 1 50); do grep -q "hooks placed: 5" "$W/home/logs/prism.log" && break; sleep 0.1; done
+grep -q "hooks placed: 5" "$W/home/logs/prism.log" || fail "hooks not placed after re-inject"
 echo "ok  injected again, hooks placed again"
 echo "ALL PASSED"
