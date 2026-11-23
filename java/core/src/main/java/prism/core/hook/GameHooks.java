@@ -16,7 +16,15 @@ public final class GameHooks {
         <E> E post(E event);
     }
 
-    public static void register(Hooks hooks, Poster bus, Function<Float, int[]> screenSize) {
+    public static void register(Hooks hooks, Poster bus, Function<Float, int[]> screenSize,
+                                java.util.function.BiConsumer<Object, Object> channelActive) {
+        // every new connection: NetworkManager.channelActive (a Netty method, same name everywhere)
+        hooks.add(Hook.head("connect", "net/minecraft/network/NetworkManager", "channelActive", "channelActive",
+                "(Lio/netty/channel/ChannelHandlerContext;)V", new int[] {0, 1}, false, args -> {
+                    channelActive.accept(args[0], args[1]);
+                    return false;
+                }));
+
         hooks.add(Hook.head("tick", "net/minecraft/client/Minecraft", "runTick", "func_71407_l", "()V",
                 new int[0], false, args -> {
                     bus.post(TickEvent.INSTANCE);

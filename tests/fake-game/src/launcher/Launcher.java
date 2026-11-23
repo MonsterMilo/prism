@@ -7,7 +7,7 @@ import java.net.URLClassLoader;
 /** Loads the "game" through its own class loader on a "Client thread", like Lunar and Forge do. */
 public class Launcher {
     public static void main(String[] args) throws Exception {
-        ClassLoader game = new URLClassLoader(new URL[] {new File(args[0]).toURI().toURL()}, null);
+        ClassLoader game = new URLClassLoader(new URL[] {new File(args[0]).toURI().toURL(), new File(args[1]).toURI().toURL()}, null);
         Thread t = new Thread(() -> {
             try {
                 game.loadClass("net.minecraft.client.Minecraft").getMethod("run").invoke(null);

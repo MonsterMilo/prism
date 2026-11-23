@@ -20,6 +20,7 @@ import java.util.zip.ZipFile;
 import prism.api.EventBus;
 import prism.api.Game;
 import prism.api.Logger;
+import prism.api.Network;
 import prism.api.Plugin;
 import prism.api.PluginContext;
 import prism.api.PluginInfo;
@@ -39,6 +40,7 @@ final class PluginManager {
     private final ClassLoader parent;
     private final Bus bus;
     private final Game game;
+    private final Network network;
     private final Logger log = CoreLog.forSource("plugins");
 
     /** file name -> loaded plugin */
@@ -50,7 +52,8 @@ final class PluginManager {
     private int cacheCounter;
     private boolean firstScan = true;
 
-    PluginManager(Path home, ClassLoader parent, Bus bus, Game game) {
+    PluginManager(Path home, ClassLoader parent, Bus bus, Game game, Network network) {
+        this.network = network;
         this.pluginsDir = home.resolve("plugins");
         this.cacheDir = home.resolve("cache").resolve("plugins");
         this.dataDir = home.resolve("data");
@@ -270,6 +273,7 @@ final class PluginManager {
         @Override public EventBus events() { return events; }
         @Override public Scheduler scheduler() { return tasks; }
         @Override public Game game() { return game; }
+        @Override public Network network() { return network; }
 
         @Override
         public Path dataFolder() {

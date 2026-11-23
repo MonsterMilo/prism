@@ -17,6 +17,9 @@ public interface PluginContext {
     /** The game Prism is injected into. */
     Game game();
 
+    /** The connection to the server: send and receive packets. */
+    Network network();
+
     /** A folder for this plugin's own files (created on first call). */
     Path dataFolder();
 }
