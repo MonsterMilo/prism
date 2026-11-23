@@ -10,10 +10,10 @@ if [[ "$(uname -s)" != MINGW* && "$(uname -s)" != MSYS* ]]; then
 fi
 (cd java && gradle -q build)
 cargo build --release "${TARGET_ARGS[@]}" -p prism-agent
-PRISM_AGENT_DLL="$PWD/$OUT/prism_agent.dll" PRISM_CORE_JAR="$PWD/java/core/build/libs/prism-core-0.1.0.jar" \
+PRISM_AGENT_DLL="$PWD/$OUT/prism_agent.dll" PRISM_CORE_JAR="$PWD/java/core/build/libs/prism-core.jar" \
   cargo build --release "${TARGET_ARGS[@]}" -p prism-app
 mkdir -p dist
 cp "$OUT/Prism.exe" dist/
-cp java/api/build/libs/prism-api-0.1.0.jar dist/prism-api.jar
-cp java/example-plugin/build/libs/example-plugin-0.1.0.jar dist/example-plugin.jar
+cp java/api/build/libs/prism-api.jar dist/prism-api.jar
+cp java/example-plugin/build/libs/example-plugin.jar dist/example-plugin.jar
 ls -la dist

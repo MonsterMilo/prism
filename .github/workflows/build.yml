@@ -31,12 +31,12 @@ jobs:
           cd java; gradle -q build; cd ..
           cargo build --release -p prism-agent
           $env:PRISM_AGENT_DLL = "$PWD\target\release\prism_agent.dll"
-          $env:PRISM_CORE_JAR = "$PWD\java\core\build\libs\prism-core-0.1.0.jar"
+          $env:PRISM_CORE_JAR = "$PWD\java\core\build\libs\prism-core.jar"
           cargo build --release -p prism-app
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item target\release\Prism.exe dist\
-          Copy-Item java\api\build\libs\prism-api-0.1.0.jar dist\prism-api.jar
-          Copy-Item java\example-plugin\build\libs\example-plugin-0.1.0.jar dist\example-plugin.jar
+          Copy-Item java\api\build\libs\prism-api.jar dist\prism-api.jar
+          Copy-Item java\example-plugin\build\libs\example-plugin.jar dist\example-plugin.jar
       - uses: actions/upload-artifact@v4
         with:
           name: prism-windows

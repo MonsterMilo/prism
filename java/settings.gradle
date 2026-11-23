@@ -1,2 +1,3 @@
+pluginManagement { repositories { gradlePluginPortal(); mavenCentral() } }
 rootProject.name = 'prism'
 include 'api', 'core', 'example-plugin'

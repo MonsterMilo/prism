@@ -11,7 +11,7 @@ public final class Native {
 
     static native void unload0();
 
-    static native boolean redefineClass0(Class<?> target, byte[] classFile);
+    static native int retransform0(Class<?> target, java.util.function.Function<byte[], byte[]> transformer);
 
     private static volatile boolean linked = true;
 
@@ -33,12 +33,16 @@ public final class Native {
         }
     }
 
-    /** Replaces a loaded class's bytecode (JVMTI RedefineClasses). For the hook system. */
-    public static boolean redefineClass(Class<?> target, byte[] classFile) {
+    /**
+     * Retransforms a loaded class (JVMTI): its current bytes go through {@code transformer}, whose
+     * result becomes the class. {@code null} restores the class as the game loaded it.
+     * Returns 0, a JVMTI error code, or -1 when the agent can't do it.
+     */
+    public static int retransform(Class<?> target, java.util.function.Function<byte[], byte[]> transformer) {
         try {
-            return redefineClass0(target, classFile);
+            return retransform0(target, transformer);
         } catch (UnsatisfiedLinkError e) {
-            return false;
+            return -1;
         }
     }
 }

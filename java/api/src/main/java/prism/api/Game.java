@@ -16,4 +16,7 @@ public interface Game {
      * Supports {@code §} colour codes. Safe to call from any thread.
      */
     void chat(String message);
+
+    /** 2D drawing for RenderOverlayEvent handlers. */
+    Draw draw();
 }

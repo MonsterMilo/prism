@@ -216,6 +216,25 @@ impl Env {
         jni!(self, NewObjectArray, len, cls, first)
     }
 
+    pub fn new_byte_array(&self, data: &[u8]) -> jbyteArray {
+        let a = jni!(self, NewByteArray, data.len() as jsize);
+        if !a.is_null() {
+            jni!(
+                self,
+                SetByteArrayRegion,
+                a,
+                0,
+                data.len() as jsize,
+                data.as_ptr() as *const jbyte
+            );
+        }
+        a
+    }
+
+    pub fn same_object(&self, a: jobject, b: jobject) -> bool {
+        jni!(self, IsSameObject, a, b) != JNI_FALSE
+    }
+
     pub fn byte_array(&self, a: jbyteArray) -> Vec<u8> {
         let len = self.array_len(a) as usize;
         let mut out = vec![0u8; len];
@@ -319,12 +338,19 @@ const JVMTI_VERSION_1_2: jint = 0x3001_0200;
 #[derive(Clone, Copy)]
 pub struct Jvmti(*mut *const *const c_void);
 
-#[repr(C)]
-struct ClassDefinition {
-    klass: jclass,
-    class_byte_count: jint,
-    class_bytes: *const u8,
-}
+/// jvmtiEventClassFileLoadHook
+pub type ClassFileLoadHook = extern "system" fn(
+    jvmti: *mut c_void,
+    jni: *mut JNIEnv,
+    class_being_redefined: jclass,
+    loader: jobject,
+    name: *const c_char,
+    protection_domain: jobject,
+    class_data_len: jint,
+    class_data: *const u8,
+    new_class_data_len: *mut jint,
+    new_class_data: *mut *mut u8,
+);
 
 impl Jvmti {
     pub fn get(vm: *mut JavaVM) -> Option<Jvmti> {
@@ -343,29 +369,61 @@ impl Jvmti {
         f(*self, p);
     }
 
-    /// Asks for can_redefine_classes (bit 9 of the capabilities). Returns whether it was granted.
-    pub fn enable_redefine(&self) -> bool {
+    /// Asks for the capabilities the hook system needs: can_retransform_classes (bit 37) and
+    /// can_generate_all_class_hook_events (bit 26). Returns whether they were granted.
+    pub fn enable_retransform(&self) -> bool {
         let mut caps = [0u32; 4];
         let potential: extern "system" fn(Jvmti, *mut u32) -> jint =
             unsafe { std::mem::transmute(self.slot(140)) };
-        if potential(*self, caps.as_mut_ptr()) != 0 || caps[0] & (1 << 9) == 0 {
+        let want = [1u32 << 26, 1u32 << (37 - 32), 0, 0];
+        if potential(*self, caps.as_mut_ptr()) != 0
+            || caps[0] & want[0] == 0
+            || caps[1] & want[1] == 0
+        {
             return false;
         }
-        let want = [1u32 << 9, 0, 0, 0];
         let add: extern "system" fn(Jvmti, *const u32) -> jint =
             unsafe { std::mem::transmute(self.slot(142)) };
         add(*self, want.as_ptr()) == 0
     }
 
-    pub fn redefine(&self, cls: jclass, bytes: &[u8]) -> jint {
-        let def = ClassDefinition {
-            klass: cls,
-            class_byte_count: bytes.len() as jint,
-            class_bytes: bytes.as_ptr(),
-        };
-        let f: extern "system" fn(Jvmti, jint, *const ClassDefinition) -> jint =
-            unsafe { std::mem::transmute(self.slot(87)) };
-        f(*self, 1, &def)
+    /// Installs `hook` as the ClassFileLoadHook callback (event 54, slot 4 of the callbacks struct).
+    pub fn set_class_file_load_hook(&self, hook: ClassFileLoadHook) -> jint {
+        let callbacks: [*const c_void; 5] = [
+            std::ptr::null(),
+            std::ptr::null(),
+            std::ptr::null(),
+            std::ptr::null(),
+            hook as *const c_void,
+        ];
+        let f: extern "system" fn(Jvmti, *const [*const c_void; 5], jint) -> jint =
+            unsafe { std::mem::transmute(self.slot(122)) };
+        f(*self, &callbacks, std::mem::size_of_val(&callbacks) as jint)
+    }
+
+    /// Turns ClassFileLoadHook events on or off (only on while Prism retransforms a class).
+    pub fn class_file_load_hook_events(&self, on: bool) -> jint {
+        // SetEventNotificationMode is variadic in C
+        let f: unsafe extern "C" fn(Jvmti, jint, jint, jobject, ...) -> jint =
+            unsafe { std::mem::transmute(self.slot(2)) };
+        unsafe { f(*self, on as jint, 54, null_mut()) }
+    }
+
+    pub fn retransform(&self, cls: jclass) -> jint {
+        let f: extern "system" fn(Jvmti, jint, *const jclass) -> jint =
+            unsafe { std::mem::transmute(self.slot(152)) };
+        f(*self, 1, &cls)
+    }
+
+    /// Memory the JVM takes ownership of (for new class bytes).
+    pub fn allocate(&self, len: usize) -> *mut u8 {
+        let mut p: *mut u8 = null_mut();
+        let f: extern "system" fn(Jvmti, i64, *mut *mut u8) -> jint =
+            unsafe { std::mem::transmute(self.slot(46)) };
+        if f(*self, len as i64, &mut p) != 0 {
+            return null_mut();
+        }
+        p
     }
 
     /// Calls `visit` with the loader of every loaded class whose signature is in `sigs`.

@@ -4,6 +4,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
+import prism.api.Draw;
 import prism.api.Game;
 import prism.api.Logger;
 
@@ -18,10 +19,17 @@ final class GameImpl implements Game {
     private Constructor<?> textComponent;
     private boolean resolved, broken;
 
+    private final DrawImpl draw;
+
     GameImpl(String mappings, ClassLoader loader) {
         this.mappings = mappings;
         this.loader = loader;
+        this.draw = new DrawImpl(mappings, loader);
     }
+
+    @Override public Draw draw() { return draw; }
+
+    DrawImpl drawImpl() { return draw; }
 
     @Override public String mappings() { return mappings; }
 

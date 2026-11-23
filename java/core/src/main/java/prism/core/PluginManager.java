@@ -107,11 +107,11 @@ final class PluginManager {
                 return;
             }
             List<String> changed = scan();
-            if (!changed.isEmpty()) game.chat("§d[Prism] §fReloaded " + String.join(", ", changed));
+            if (!changed.isEmpty()) game.chat("§d[Prism] §f" + String.join(", ", changed));
         }
     }
 
-    /** One pass over the folder. Returns the names of plugins that were (re)loaded. */
+    /** One pass over the folder. Returns what changed, e.g. "Loaded Example" or "Reloaded Example". */
     private synchronized List<String> scan() {
         List<String> done = new ArrayList<>();
         Map<String, String> now = new HashMap<>();
@@ -138,11 +138,12 @@ final class PluginManager {
             if (cur != null && cur.signature.equals(sig)) continue;
             boolean stable = firstScan || sig.equals(lastSeen.get(name));
             if (!stable) continue;   // still being written; look again next scan
-            if (cur != null) unload(name);
+            boolean reload = cur != null;
+            if (reload) unload(name);
             Loaded l = load(pluginsDir.resolve(name), sig);
             if (l != null) {
                 loaded.put(name, l);
-                done.add(l.info.name());
+                done.add(firstScan ? l.info.name() : (reload ? "Reloaded " : "Loaded ") + l.info.name());
             }
         }
         lastSeen.clear();
