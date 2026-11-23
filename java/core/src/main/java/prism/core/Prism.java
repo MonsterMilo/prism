@@ -14,7 +14,7 @@ import prism.core.hook.Hooks;
  * Layout of the Prism folder (home): bin/ (agent + core), plugins/, data/, logs/, cache/.
  */
 public final class Prism {
-    public static final String VERSION = "0.2.0";
+    public static final String VERSION = "0.2.1";
 
     private static final AtomicBoolean running = new AtomicBoolean();
     private static Bus bus;

@@ -29,7 +29,7 @@ public class Minecraft {
     public static void run() throws Exception {
         Thread.sleep(1500);           // "loading"
         theMinecraft = new Minecraft();
-        theMinecraft.ingameGUI = new GuiIngame();
+        theMinecraft.ingameGUI = new net.minecraftforge.client.GuiIngameForge();
         System.out.println("GAME: started");
         while (true) {                // game loop, 50 fps, a tick every other frame
             synchronized (theMinecraft.scheduledTasks) {

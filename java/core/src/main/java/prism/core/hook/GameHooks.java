@@ -23,13 +23,18 @@ public final class GameHooks {
                     return false;
                 }));
 
+        java.util.function.Predicate<Object[]> overlay = args -> {
+            float pt = (Float) args[0];
+            int[] size = screenSize.apply(pt);
+            bus.post(new RenderOverlayEvent(pt, size[0], size[1]));
+            return false;
+        };
         hooks.add(Hook.tail("overlay", "net/minecraft/client/gui/GuiIngame", "renderGameOverlay", "func_175180_a", "(F)V",
-                new int[] {1}, args -> {
-                    float pt = (Float) args[0];
-                    int[] size = screenSize.apply(pt);
-                    bus.post(new RenderOverlayEvent(pt, size[0], size[1]));
-                    return false;
-                }));
+                new int[] {1}, overlay));
+        // Forge (and Lunar with Forge mods) replaces the HUD with GuiIngameForge, which overrides
+        // renderGameOverlay without calling the vanilla one
+        hooks.add(Hook.tail("overlay-forge", "net/minecraftforge/client/GuiIngameForge", "renderGameOverlay", "func_175180_a", "(F)V",
+                new int[] {1}, overlay).optional());
 
         hooks.add(Hook.beforeCall("world", "net/minecraft/client/renderer/EntityRenderer",
                 "renderWorldPass", "func_175068_a", "(IFJ)V",
