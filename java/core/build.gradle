@@ -1,7 +1,16 @@
-// prism-core.jar: loaded into the game by the agent. Contains the API classes too.
+// prism-core.jar: loaded into the game by the agent. Contains the API classes and a private
+// copy of ASM (moved to prism.shadow.asm so it never clashes with a client's own ASM).
+plugins { id 'com.gradleup.shadow' version '8.3.5' }
 base { archivesName = 'prism-core' }
-dependencies { implementation project(':api') }
-jar {
-    dependsOn ':api:jar'
-    from { project(':api').sourceSets.main.output }
+dependencies {
+    implementation project(':api')
+    implementation 'org.ow2.asm:asm-tree:9.7.1'
 }
+jar { enabled = false }
+shadowJar {
+    archiveClassifier = ''
+    archiveVersion = ''
+    relocate 'org.objectweb.asm', 'prism.shadow.asm'
+    exclude 'module-info.class', 'META-INF/versions/**', 'META-INF/maven/**'
+}
+assemble.dependsOn shadowJar

@@ -130,23 +130,91 @@ extern "system" fn n_unload(_: *mut JNIEnv, _: jclass) {
     UNLOAD.store(true, Ordering::SeqCst);
 }
 
-extern "system" fn n_redefine(
+// The class being retransformed by Native.retransform0 on this thread, and its transformer.
+thread_local! {
+    static ACTIVE: std::cell::Cell<Option<(usize, usize)>> = const { std::cell::Cell::new(None) };
+}
+
+/// Native.retransform0(Class target, Function<byte[], byte[]> transformer): retransforms `target`,
+/// passing its current bytes through `transformer` (null = back to the original class).
+/// Returns 0 or the JVMTI error code (-1 when JVMTI is not available).
+extern "system" fn n_retransform(
     env: *mut JNIEnv,
     _: jclass,
     target: jclass,
-    bytes: jbyteArray,
-) -> jboolean {
+    transformer: jobject,
+) -> jint {
     let p = JVMTI.load(Ordering::SeqCst);
-    if p.is_null() || target.is_null() || bytes.is_null() {
-        return JNI_FALSE;
+    if p.is_null() || target.is_null() {
+        return -1;
     }
     let ti: Jvmti = unsafe { std::mem::transmute(p) };
-    let data = Env(env).byte_array(bytes);
-    let r = ti.redefine(target, &data);
+    let _ = env;
+    ACTIVE.with(|a| a.set(Some((target as usize, transformer as usize))));
+    ti.class_file_load_hook_events(true);
+    let r = ti.retransform(target);
+    ti.class_file_load_hook_events(false);
+    ACTIVE.with(|a| a.set(None));
     if r != 0 {
-        log(&format!("RedefineClasses failed: JVMTI error {r}"));
+        log(&format!("RetransformClasses failed: JVMTI error {r}"));
     }
-    (r == 0) as jboolean
+    r
+}
+
+/// ClassFileLoadHook: only acts on the class Native.retransform0 is working on, on its thread.
+extern "system" fn class_file_load_hook(
+    _jvmti: *mut c_void,
+    jni: *mut JNIEnv,
+    class_being_redefined: jclass,
+    _loader: jobject,
+    _name: *const std::ffi::c_char,
+    _pd: jobject,
+    len: jint,
+    data: *const u8,
+    new_len: *mut jint,
+    new_data: *mut *mut u8,
+) {
+    let Some((target, transformer)) = ACTIVE.with(|a| a.get()) else {
+        return;
+    };
+    let (target, transformer) = (target as jclass, transformer as jobject);
+    if class_being_redefined.is_null() || transformer.is_null() || jni.is_null() || data.is_null() {
+        return;
+    }
+    let env = Env(jni);
+    if !env.same_object(class_being_redefined, target) {
+        return;
+    }
+    let p = JVMTI.load(Ordering::SeqCst);
+    if p.is_null() {
+        return;
+    }
+    let ti: Jvmti = unsafe { std::mem::transmute(p) };
+    if !env.push_frame(16) {
+        return;
+    }
+    let result = (|| -> Result<Option<Vec<u8>>, String> {
+        let input = env.new_byte_array(unsafe { std::slice::from_raw_parts(data, len as usize) });
+        let function = env.find_class("java/util/function/Function")?;
+        let apply = env.method(function, "apply", "(Ljava/lang/Object;)Ljava/lang/Object;")?;
+        let out = env.call_object(transformer, apply, &[jvalue { l: input }])?;
+        Ok((!out.is_null()).then(|| env.byte_array(out)))
+    })();
+    env.pop_frame();
+    match result {
+        Ok(Some(bytes)) => {
+            let mem = ti.allocate(bytes.len());
+            if !mem.is_null() {
+                unsafe {
+                    std::ptr::copy_nonoverlapping(bytes.as_ptr(), mem, bytes.len());
+                    *new_len = bytes.len() as jint;
+                    *new_data = mem;
+                }
+            }
+        }
+        Ok(None) => {}
+        Err(e) => log(&format!("transformer failed: {e}")),
+    }
 }
 
 // ------------------------------------------------------------------ the agent thread
@@ -165,8 +233,11 @@ pub fn run(vm: *mut JavaVM, paths: Paths, extra_unload: impl Fn() -> bool) {
     };
     let ti = Jvmti::get(vm);
     if let Some(t) = ti {
-        let redefine = t.enable_redefine();
-        log(&format!("JVMTI ready (redefine classes: {redefine})"));
+        let retransform = t.enable_retransform();
+        if retransform {
+            t.set_class_file_load_hook(class_file_load_hook);
+        }
+        log(&format!("JVMTI ready (retransform classes: {retransform})"));
         JVMTI.store(
             unsafe { std::mem::transmute::<Jvmti, *mut c_void>(t) },
             Ordering::SeqCst,
@@ -242,9 +313,9 @@ fn start_core(env: Env, paths: &Paths, game: &Game) -> Result<Core, String> {
                 ("log0", "(Ljava/lang/String;)V", n_log as *mut c_void),
                 ("unload0", "()V", n_unload as *mut c_void),
                 (
-                    "redefineClass0",
-                    "(Ljava/lang/Class;[B)Z",
-                    n_redefine as *mut c_void,
+                    "retransform0",
+                    "(Ljava/lang/Class;Ljava/util/function/Function;)I",
+                    n_retransform as *mut c_void,
                 ),
             ],
         )?;

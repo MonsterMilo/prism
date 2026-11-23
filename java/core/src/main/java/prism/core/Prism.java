@@ -6,17 +6,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import prism.api.Logger;
 import prism.api.event.ShutdownEvent;
+import prism.core.hook.GameHooks;
+import prism.core.hook.Hooks;
 
 /**
  * Started by the native agent once the game's classes are loaded.
  * Layout of the Prism folder (home): bin/ (agent + core), plugins/, data/, logs/, cache/.
  */
 public final class Prism {
-    public static final String VERSION = "0.1.0";
+    public static final String VERSION = "0.2.0";
 
     private static final AtomicBoolean running = new AtomicBoolean();
     private static Bus bus;
     private static PluginManager plugins;
+    private static Hooks hooks;
     private static Thread shutdownHook;
 
     private Prism() {}
@@ -42,6 +45,12 @@ public final class Prism {
             Tasks.start();
             bus = new Bus();
             GameImpl game = new GameImpl(mappings, minecraft.getClassLoader());
+            hooks = new Hooks(minecraft.getClassLoader(), mappings, CoreLog.forSource("hooks"));
+            Bus b = bus;
+            GameHooks.register(hooks, new GameHooks.Poster() {
+                public <E> E post(E event) { return b.post(event); }
+            }, pt -> game.drawImpl().screenSize());
+            log.info("hooks placed: " + hooks.install());
             plugins = new PluginManager(dir, Prism.class.getClassLoader(), bus, game);
             plugins.start();
             shutdownHook = new Thread(Prism::stop, "Prism Shutdown");
@@ -66,6 +75,12 @@ public final class Prism {
         } catch (Throwable t) {
             log.error("stop failed", t);
         }
+        try {
+            if (hooks != null) hooks.uninstall();
+        } catch (Throwable t) {
+            log.error("removing hooks failed", t);
+        }
+        hooks = null;
         Tasks.stop();
         if (shutdownHook != null && Thread.currentThread() != shutdownHook) {
             try {
