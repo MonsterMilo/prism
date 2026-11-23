@@ -4,7 +4,7 @@ An open-source plugin platform for Minecraft 1.8.9. Prism loads into a running g
 (Lunar Client first; Forge and vanilla next) and runs Java plugins inside it.
 
 > Status: early. Injection, the Java core, plugin loading with hot reload, the desktop app and
-> game events (ticks, HUD/world rendering, keys and mouse) work. Features come next.
+> game events (ticks, HUD/world rendering, keys and mouse) and packets work. Features come next.
 
 ## Using it
 
@@ -39,7 +39,11 @@ public class ExamplePlugin implements Plugin {
 ```
 
 Events: `TickEvent`, `RenderOverlayEvent`, `RenderWorldEvent`, `KeyEvent`, `MouseButtonEvent`,
+`PacketReceiveEvent`, `PacketSendEvent`, `ConnectEvent`, `DisconnectEvent`,
 `PluginEnableEvent`, `PluginDisableEvent`, `ShutdownEvent`.
+
+Packets: cancel or `replace()` them in the packet events, or use `ctx.network().send(packet)` /
+`receive(packet)` with the game's own packet classes.
 
 See [`java/example-plugin`](java/example-plugin) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

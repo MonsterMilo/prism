@@ -8,18 +8,20 @@ import prism.api.Logger;
 import prism.api.event.ShutdownEvent;
 import prism.core.hook.GameHooks;
 import prism.core.hook.Hooks;
+import prism.core.net.Connections;
 
 /**
  * Started by the native agent once the game's classes are loaded.
  * Layout of the Prism folder (home): bin/ (agent + core), plugins/, data/, logs/, cache/.
  */
 public final class Prism {
-    public static final String VERSION = "0.2.1";
+    public static final String VERSION = "0.3.0";
 
     private static final AtomicBoolean running = new AtomicBoolean();
     private static Bus bus;
     private static PluginManager plugins;
     private static Hooks hooks;
+    private static Connections connections;
     private static Thread shutdownHook;
 
     private Prism() {}
@@ -47,11 +49,16 @@ public final class Prism {
             GameImpl game = new GameImpl(mappings, minecraft.getClassLoader());
             hooks = new Hooks(minecraft.getClassLoader(), mappings, CoreLog.forSource("hooks"));
             Bus b = bus;
+            connections = new Connections(new Connections.Poster() {
+                public <E> E post(E event) { return b.post(event); }
+            }, CoreLog.forSource("network"));
+            Connections conns = connections;
             GameHooks.register(hooks, new GameHooks.Poster() {
                 public <E> E post(E event) { return b.post(event); }
-            }, pt -> game.drawImpl().screenSize());
+            }, pt -> game.drawImpl().screenSize(), conns::onChannelActive);
             log.info("hooks placed: " + hooks.install());
-            plugins = new PluginManager(dir, Prism.class.getClassLoader(), bus, game);
+            conns.attachCurrent(ClientThread.minecraft());
+            plugins = new PluginManager(dir, Prism.class.getClassLoader(), bus, game, connections);
             plugins.start();
             shutdownHook = new Thread(Prism::stop, "Prism Shutdown");
             Runtime.getRuntime().addShutdownHook(shutdownHook);
@@ -75,6 +82,12 @@ public final class Prism {
         } catch (Throwable t) {
             log.error("stop failed", t);
         }
+        try {
+            if (connections != null) connections.stop();
+        } catch (Throwable t) {
+            log.error("removing packet handlers failed", t);
+        }
+        connections = null;
         try {
             if (hooks != null) hooks.uninstall();
         } catch (Throwable t) {

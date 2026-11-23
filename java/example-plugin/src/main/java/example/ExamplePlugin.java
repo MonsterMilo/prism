@@ -3,11 +3,12 @@ package example;
 import prism.api.Draw;
 import prism.api.Plugin;
 import prism.api.PluginContext;
+import prism.api.event.ConnectEvent;
 import prism.api.event.KeyEvent;
 import prism.api.event.RenderOverlayEvent;
 import prism.api.event.TickEvent;
 
-/** Says hello, counts ticks, draws a small label on the HUD and logs key presses. */
+/** Says hello, counts ticks, draws a small label on the HUD, logs key presses and says which server you joined. */
 public class ExamplePlugin implements Plugin {
     private int ticks;
 
@@ -20,6 +21,7 @@ public class ExamplePlugin implements Plugin {
             String label = "§dPrism §7" + (ticks / 20) + "s";
             d.text(label, e.width() - d.textWidth(label) - 4, e.height() - d.fontHeight() - 4, 0xFFFFFFFF);
         });
+        ctx.events().on(ConnectEvent.class, e -> ctx.game().chat("§d[Example] §fConnected to " + e.address()));
         ctx.events().on(KeyEvent.class, e -> {
             if (e.pressed()) ctx.log().info("key " + e.key());
         });

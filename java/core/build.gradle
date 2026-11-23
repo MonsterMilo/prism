@@ -5,6 +5,8 @@ base { archivesName = 'prism-core' }
 dependencies {
     implementation project(':api')
     implementation 'org.ow2.asm:asm-tree:9.7.1'
+    // the game's own Netty (Minecraft 1.8.9 ships 4.0.23); not bundled
+    compileOnly 'io.netty:netty-all:4.0.23.Final'
 }
 jar { enabled = false }
 shadowJar {

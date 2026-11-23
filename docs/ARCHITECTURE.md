@@ -59,6 +59,7 @@ Prism patches a few game methods to raise its events:
 | `TickEvent` | `Minecraft.runTick` / `func_71407_l` | start |
 | `RenderOverlayEvent` | `GuiIngame.renderGameOverlay` / `func_175180_a` | every return |
 | `RenderWorldEvent` | `EntityRenderer.renderWorldPass` / `func_175068_a` | before `renderHand` |
+| (packets) | `NetworkManager.channelActive` | start: adds the packet handler |
 | `KeyEvent`, `MouseButtonEvent` | `KeyBinding.setKeyBindState` / `func_74510_a` | start, cancelable |
 
 - The agent retransforms a class (JVMTI `RetransformClasses`) with its ClassFileLoadHook switched on
@@ -70,7 +71,18 @@ Prism patches a few game methods to raise its events:
 - On unload every patched class is retransformed without the hook, which puts back the original.
   The property is set before patching and only removed once the class is restored.
 
+## Packets (`prism.core.net`)
+
+- A Netty handler named `prism_packets` goes into each client connection's pipeline, right before
+  Minecraft's `packet_handler`, where packets are decoded objects both ways.
+- New connections are caught by the `NetworkManager.channelActive` hook; the connection already
+  open when Prism starts is found through `Minecraft → NetHandlerPlayClient → NetworkManager`.
+  Singleplayer's server-side NetworkManager (direction SERVERBOUND) is skipped.
+- `PacketReceiveEvent` / `PacketSendEvent` can be cancelled or replaced. `Network.send()` writes from
+  the handler's own context (straight to the encoder) and `receive()` fires from it (straight to the
+  game), so neither raises an event. Events run on the Netty thread.
+- On unload the handler is removed from every pipeline before the core's class loader closes.
+
 ## Next steps (not built yet)
 
-- Packets: a Netty handler in the game's pipeline for packet events.
 - In-game UI, updates, Forge and vanilla testing.
